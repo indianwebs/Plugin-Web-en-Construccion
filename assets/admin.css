@@ -1,0 +1,52 @@
+.lista-disenos {
+  margin-top: 10px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.lista-disenos li {
+  padding: 6px 10px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+  max-width: 100px;
+  display: flex;
+}
+
+.lista-disenos li:hover {
+  background: #e2e2e2;
+}
+
+.boton-activar,
+.boton-terminar {
+  border: none;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 3px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.boton-activar {
+  background-color: green;
+}
+.boton-terminar {
+  background-color: rgb(255, 0, 0);
+}
+
+.boton-activar:hover,
+.boton-terminar:hover {
+  background-color: #005177;
+}
+
+.logo {
+  max-width: 180px;
+  height: auto;
+  margin-bottom: 20px;
+}
