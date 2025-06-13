@@ -1,7 +1,5 @@
 # Página En Construcción
 
----
-
 ## Descripción
 
 El plugin **"En Construcción"** permite a los administradores de WordPress mostrar una página personalizada de mantenimiento o "En Construcción" mientras se trabaja en un sitio web. Se puede configurar el diseño de la página de construcción, el título, el mensaje, la fecha de finalización estimada y más, a través de una interfaz de administración en el panel de WordPress.
