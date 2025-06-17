@@ -37,10 +37,23 @@ function MostrarSeccion()
 
     echo '<div id="enconstruccion-root"></div>';
 }
-
 function MostrarPaginasGuardadas()
 {
     $diseños = get_option('enconstruccion_disenos', []);
+
+    // Procesar acciones globales
+    if (isset($_POST['activar_global'])) {
+        $index = intval($_POST['activar_global']);
+        if (isset($diseños[$index])) {
+            update_option('enconstruccion_mantenimiento_global', $diseños[$index]);
+            echo '<div class="notice notice-success"><p>Mantenimiento global activado.</p></div>';
+        }
+    }
+
+    if (isset($_POST['desactivar_global'])) {
+        delete_option('enconstruccion_mantenimiento_global');
+        echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado.</p></div>';
+    }
 
     if (isset($_POST['BorrarPlantilla'])) {
         $fecha = sanitize_text_field($_POST['BorrarPlantilla']);
@@ -50,11 +63,35 @@ function MostrarPaginasGuardadas()
     }
 
     echo '<div class="wrap"><h1>Mis diseños guardados</h1>';
+
+    // MANTENIMIENTO GLOBAL
+    echo '<h2>Mantenimiento global</h2>';
+    $global = get_option('enconstruccion_mantenimiento_global', false);
+
+    if ($global) {
+        echo '<p><strong>Diseño actual:</strong> ' . esc_html($global['titulo']) . '</p>';
+        echo '<form method="post"><input type="submit" name="desactivar_global" class="button" value="❌ Cancelar mantenimiento global"></form>';
+    } else {
+        echo '<p>Haz clic en un diseño para aplicarlo globalmente:</p>';
+        echo '<ul>';
+        foreach ($diseños as $i => $d) {
+            echo '<li>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="activar_global" value="' . esc_attr($i) . '">
+                    <button class="button button-secondary">' . esc_html($d['titulo']) . '</button>
+                </form>
+            </li>';
+        }
+        echo '</ul>';
+    }
+
+    // LISTADO NORMAL DE DISEÑOS
     if (empty($diseños)) {
         echo '<p>No hay diseños guardados.</p></div>';
         return;
     }
 
+    echo '<h2>Diseños individuales</h2>';
     echo '<table class="widefat fixed"><thead><tr><th>Título</th><th>Fecha</th><th>Vista previa</th><th>Eliminar</th></tr></thead><tbody>';
     foreach ($diseños as $d) {
         $url = plugin_dir_url(__FILE__) . 'preview.php?' . http_build_query([
@@ -80,6 +117,7 @@ function MostrarPaginasGuardadas()
     }
     echo '</tbody></table></div>';
 }
+
 add_action('admin_enqueue_scripts', function ($hook) {
     if (!in_array($hook, ['toplevel_page_enconstruccion', 'en-construccion_page_paginas-guardadas'])) return;
     wp_enqueue_media();
@@ -208,15 +246,32 @@ add_action('admin_footer-edit.php', function () {
 
 
 add_action('template_redirect', function () {
+    if (is_admin()) return;
+
+    if (current_user_can('edit_pages')) return;
+
     if (!is_singular()) return;
+
     $id = get_the_ID();
     $activo = get_post_meta($id, 'ConstrucionActivado', true);
     $diseño = get_post_meta($id, 'ConstrucionDiseno', true);
-    if ($activo && is_array($diseño)) {
-        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
-        exit;
+    $global = get_option('enconstruccion_mantenimiento_global', false);
+
+    // Mostrar página en construcción si procede
+    if (($activo && is_array($diseño)) || $global) {
+        if (!$diseño && $global) {
+            $diseño = $global;
+        }
+
+        if (is_array($diseño)) {
+            include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
+            exit;
+        }
     }
 });
+
+
+
 
 function ImplementarCss()
 {
