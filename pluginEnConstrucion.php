@@ -19,7 +19,7 @@ add_action('admin_menu', function () {
         'enconstruccion',
         'MostrarSeccion',
         'dashicons-hammer',
-        60
+        80
     );
 
     add_submenu_page(
