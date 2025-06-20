@@ -49,11 +49,12 @@ function MostrarPaginasGuardadas()
             echo '<div class="notice notice-success"><p>Mantenimiento global activado.</p></div>';
         }
     }
-
     if (isset($_POST['desactivar_global'])) {
         delete_option('enconstruccion_mantenimiento_global');
+        error_log('Mantenimiento global desactivado');  // Añadir log para depurar
         echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado.</p></div>';
     }
+
 
     if (isset($_POST['BorrarPlantilla'])) {
         $fecha = sanitize_text_field($_POST['BorrarPlantilla']);
@@ -182,8 +183,10 @@ add_action('wp_ajax_desactivar_diseño_directo', function () {
     $id = intval($_POST['post_id']);
     delete_post_meta($id, 'ConstrucionActivado');
     delete_post_meta($id, 'ConstrucionDiseno');
+    error_log('Mantenimiento desactivado para la página: ' . $id);  // Añadir log para depurar
     wp_send_json_success();
 });
+
 add_action('admin_enqueue_scripts', function ($hook) {
     if ($hook === 'edit.php') {
         wp_enqueue_style(
@@ -217,7 +220,9 @@ add_action('admin_footer-edit.php', function () {
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             },
-                            body: action=activar_diseño_directo&post_id=${postID}&index=<?php echo esc_js($i); ?>
+                            body: action = activar_diseño_directo & post_id = $ {
+                                postID
+                            } & index = <?php echo esc_js($i); ?>
                         }).then(res => res.json()).then(() => location.reload());
                     });
                     lista.appendChild(li<?php echo esc_js($i); ?>);
@@ -236,7 +241,9 @@ add_action('admin_footer-edit.php', function () {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: action=desactivar_diseño_directo&post_id=${postID}
+                    body: action = desactivar_diseño_directo & post_id = $ {
+                        postID
+                    }
                 }).then(res => res.json()).then(() => location.reload());
             });
         });
