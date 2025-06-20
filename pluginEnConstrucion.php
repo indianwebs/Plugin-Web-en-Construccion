@@ -34,9 +34,9 @@ add_action('admin_menu', function () {
 
 function MostrarSeccion()
 {
-
     echo '<div id="enconstruccion-root"></div>';
 }
+
 function MostrarPaginasGuardadas()
 {
     $diseños = get_option('enconstruccion_disenos', []);
@@ -52,7 +52,18 @@ function MostrarPaginasGuardadas()
 
     if (isset($_POST['desactivar_global'])) {
         delete_option('enconstruccion_mantenimiento_global');
-        echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado.</p></div>';
+        // Limpiar estado de las páginas activadas
+        $args = [
+            'post_type' => 'page',
+            'meta_key' => 'ConstrucionActivado',
+            'meta_value' => true
+        ];
+        $pages = get_posts($args);
+        foreach ($pages as $page) {
+            delete_post_meta($page->ID, 'ConstrucionActivado');
+            delete_post_meta($page->ID, 'ConstrucionDiseno');
+        }
+        echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado y estado de las páginas actualizado.</p></div>';
     }
 
     if (isset($_POST['BorrarPlantilla'])) {
@@ -134,6 +145,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
         'imagesBaseUrl' => plugin_dir_url(__FILE__) . 'marcos/' // Aquí añadimos la ruta de las imágenes
     ]);
 });
+
 add_action('wp_ajax_guardar_diseño', function () {
     $diseños = get_option('enconstruccion_disenos', []);
     $nuevo = [
@@ -184,17 +196,17 @@ add_action('wp_ajax_desactivar_diseño_directo', function () {
     delete_post_meta($id, 'ConstrucionDiseno');
     wp_send_json_success();
 });
+
 add_action('admin_enqueue_scripts', function ($hook) {
     if ($hook === 'edit.php') {
         wp_enqueue_style(
             'enconstruccion-admin-style',
             plugin_dir_url(__FILE__) . 'assets/admin.css',
-            [],
+            [], 
             filemtime(plugin_dir_path(__FILE__) . 'assets/admin.css')
         );
     }
 });
-
 
 add_action('admin_footer-edit.php', function () {
     if (get_current_screen()->id !== 'edit-page') return;
@@ -244,7 +256,6 @@ add_action('admin_footer-edit.php', function () {
 <?php
 });
 
-
 add_action('template_redirect', function () {
     if (is_admin()) return;
 
@@ -270,21 +281,17 @@ add_action('template_redirect', function () {
     }
 });
 
-
-
-
 function ImplementarCss()
 {
     wp_enqueue_style(
-        'mi-plugin-styles', // Identificador único para el archivo CSS
-        plugin_dir_url(__FILE__) . 'assets/preview.css', // Ruta al archivo CSS
-        array(), // Dependencias (si las hay)
-        null, // Versión (puedes poner una versión específica o null)
-        'all' // Medio de estilo (puedes usar 'screen', 'print', etc.)
+        'mi-plugin-styles',
+        plugin_dir_url(__FILE__) . 'assets/preview.css',
+        [],
+        null,
+        'all'
     );
 }
 add_action('wp_enqueue_scripts', 'ImplementarCss');
-
 
 function ImplementarFuente()
 {
@@ -293,7 +300,7 @@ function ImplementarFuente()
         wp_enqueue_style(
             'google-roboto-font',
             'https://fonts.googleapis.com/css2?family=Roboto&display=swap',
-            array(),
+            [],
             null
         );
     }
