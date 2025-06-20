@@ -250,9 +250,7 @@ add_action('admin_footer-edit.php', function () {
 
 add_action('template_redirect', function () {
     if (is_admin()) return;
-
     if (current_user_can('edit_pages')) return;
-
     if (!is_singular()) return;
 
     $id = get_the_ID();
@@ -260,18 +258,19 @@ add_action('template_redirect', function () {
     $diseño = get_post_meta($id, 'ConstrucionDiseno', true);
     $global = get_option('enconstruccion_mantenimiento_global', false);
 
-    // Mostrar página en construcción si procede
-    if (($activo && is_array($diseño)) || $global) {
-        if (!$diseño && $global) {
-            $diseño = $global;
-        }
+    // Si la página tiene mantenimiento activado con un diseño válido
+    if ($activo && is_array($diseño)) {
+        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
+        exit;
+    }
 
-        if (is_array($diseño)) {
-            include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
-            exit;
-        }
+    // Si no está activado individualmente pero sí hay un global
+    if (!$activo && is_array($global)) {
+        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
+        exit;
     }
 });
+
 
 function ImplementarCss()
 {
