@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: En Construcción
- * Description: Muestra una página de configuración "En Construcción" solo con mantenimiento global.
+ * Description: Muestra una página de configuración "En Construcción".
  * Version: 1.0
  * Author: Lin
  * License: GPLv2 or later
@@ -21,6 +21,15 @@ add_action('admin_menu', function () {
         'dashicons-hammer',
         80
     );
+
+    add_submenu_page(
+        'enconstruccion',
+        'Mis páginas guardadas',
+        'Mis páginas guardadas',
+        'manage_options',
+        'paginas-guardadas',
+        'MostrarPaginasGuardadas'
+    );
 });
 
 function MostrarSeccion()
@@ -28,23 +37,11 @@ function MostrarSeccion()
     echo '<div id="enconstruccion-root"></div>';
 }
 
-add_action('admin_enqueue_scripts', function ($hook) {
-    if ($hook === 'toplevel_page_enconstruccion') {
-        wp_enqueue_script(
-            'enconstruccion-script',
-            plugin_dir_url(__FILE__) . 'build/index.js',
-            ['wp-element'],
-            filemtime(plugin_dir_path(__FILE__) . 'build/index.js'),
-            true
-        );
-    }
-});
-
 function MostrarPaginasGuardadas()
 {
     $diseños = get_option('enconstruccion_disenos', []);
 
-    // Procesar acción global
+    // Procesar acciones globales
     if (isset($_POST['activar_global'])) {
         $index = intval($_POST['activar_global']);
         if (isset($diseños[$index])) {
@@ -58,7 +55,14 @@ function MostrarPaginasGuardadas()
         echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado.</p></div>';
     }
 
-    echo '<div class="wrap"><h1>Mantenimiento Global</h1>';
+    if (isset($_POST['BorrarPlantilla'])) {
+        $fecha = sanitize_text_field($_POST['BorrarPlantilla']);
+        $diseños = array_filter($diseños, fn($d) => $d['fecha_guardado'] !== $fecha);
+        update_option('enconstruccion_disenos', $diseños);
+        echo '<div class="notice notice-success"><p>Diseño eliminado correctamente.</p></div>';
+    }
+
+    echo '<div class="wrap"><h1>Mis diseños guardados</h1>';
 
     // MANTENIMIENTO GLOBAL
     echo '<h2>Mantenimiento global</h2>';
@@ -81,14 +85,14 @@ function MostrarPaginasGuardadas()
         echo '</ul>';
     }
 
-    // LISTADO DE DISEÑOS
+    // LISTADO NORMAL DE DISEÑOS
     if (empty($diseños)) {
         echo '<p>No hay diseños guardados.</p></div>';
         return;
     }
 
-    echo '<h2>Diseños disponibles</h2>';
-    echo '<table class="widefat fixed"><thead><tr><th>Título</th><th>Fecha</th><th>Vista previa</th></tr></thead><tbody>';
+    echo '<h2>Diseños individuales</h2>';
+    echo '<table class="widefat fixed"><thead><tr><th>Título</th><th>Fecha</th><th>Vista previa</th><th>Eliminar</th></tr></thead><tbody>';
     foreach ($diseños as $d) {
         $url = plugin_dir_url(__FILE__) . 'preview.php?' . http_build_query([
             'bg' => $d['color'],
@@ -105,12 +109,32 @@ function MostrarPaginasGuardadas()
         echo '<td>' . esc_html($d['titulo']) . '</td>';
         echo '<td>' . esc_html($d['fecha_guardado']) . '</td>';
         echo '<td><a href="' . esc_url($url) . '" target="_blank">Ver</a></td>';
+        echo '<td><form method="post" onsubmit="return confirm(\'Eliminar?\');">
+                <input type="hidden" name="BorrarPlantilla" value="' . esc_attr($d['fecha_guardado']) . '">
+                <input type="submit" class="button button-secondary" value="Eliminar">
+              </form></td>';
         echo '</tr>';
     }
     echo '</tbody></table></div>';
 }
 
-// Guardar diseño en el backend
+add_action('admin_enqueue_scripts', function ($hook) {
+    if (!in_array($hook, ['toplevel_page_enconstruccion', 'en-construccion_page_paginas-guardadas'])) return;
+    wp_enqueue_media();
+    wp_enqueue_script(
+        'enconstruccion-script',
+        plugin_dir_url(__FILE__) . 'build/index.js',
+        ['wp-element'],
+        filemtime(plugin_dir_path(__FILE__) . 'build/index.js'),
+        true
+    );
+    wp_localize_script('enconstruccion-script', 'EnConstruccionData', [
+        'previewUrl' => plugin_dir_url(__FILE__) . 'preview.php',
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'imagesBaseUrl' => plugin_dir_url(__FILE__) . 'marcos/' // Aquí añadimos la ruta de las imágenes
+    ]);
+});
+
 add_action('wp_ajax_guardar_diseño', function () {
     $diseños = get_option('enconstruccion_disenos', []);
     $nuevo = [
@@ -129,7 +153,98 @@ add_action('wp_ajax_guardar_diseño', function () {
     wp_send_json_success(['mensaje' => 'Diseño guardado correctamente.']);
 });
 
-// Desactivar mantenimiento de una página
+add_filter('manage_pages_columns', function ($columnasPropia) {
+    $columnasPropia['mantenimiento'] = 'Mantenimiento';
+    return $columnasPropia;
+});
+
+add_action('manage_pages_custom_column', function ($column_name, $post_id) {
+    if ($column_name === 'mantenimiento') {
+        $activo = get_post_meta($post_id, 'ConstrucionActivado', true);
+        if ($activo) {
+            echo '<button class="boton-terminar" data-postid="' . esc_attr($post_id) . '">Terminar</button>';
+        } else {
+            echo '<button class="boton-activar" data-postid="' . esc_attr($post_id) . '">Mantener</button>';
+        }
+    }
+}, 10, 2);
+
+add_action('wp_ajax_activar_diseño_directo', function () {
+    $id = intval($_POST['post_id']);
+    $diseños = get_option('enconstruccion_disenos', []);
+    $seleccionado = intval($_POST['index']);
+    if (!isset($diseños[$seleccionado])) wp_send_json_error();
+    update_post_meta($id, 'ConstrucionActivado', true);
+    update_post_meta($id, 'ConstrucionDiseno', $diseños[$seleccionado]);
+    wp_send_json_success();
+});
+
+add_action('wp_ajax_desactivar_diseño_directo', function () {
+    $id = intval($_POST['post_id']);
+    delete_post_meta($id, 'ConstrucionActivado');
+    delete_post_meta($id, 'ConstrucionDiseno');
+    wp_send_json_success();
+});
+
+add_action('admin_enqueue_scripts', function ($hook) {
+    if ($hook === 'edit.php') {
+        wp_enqueue_style(
+            'enconstruccion-admin-style',
+            plugin_dir_url(__FILE__) . 'assets/admin.css',
+            [], 
+            filemtime(plugin_dir_path(__FILE__) . 'assets/admin.css')
+        );
+    }
+});
+
+add_action('admin_footer-edit.php', function () {
+    if (get_current_screen()->id !== 'edit-page') return;
+    $diseños = get_option('enconstruccion_disenos', []);
+?>
+    <script>
+        document.querySelectorAll('.boton-activar').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                const postID = btn.dataset.postid;
+                const lista = document.createElement('ul');
+                lista.className = 'lista-disenos';
+
+                <?php foreach ($diseños as $i => $d): ?>
+                    const li<?php echo esc_js($i); ?> = document.createElement('li');
+                    li<?php echo esc_js($i); ?>.textContent = "<?php echo esc_js($d['titulo']); ?>";
+                    li<?php echo esc_js($i); ?>.addEventListener('click', () => {
+                        fetch(ajaxurl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            },
+                            body: `action=activar_diseño_directo&post_id=${postID}&index=<?php echo esc_js($i); ?>`
+                        }).then(res => res.json()).then(() => location.reload());
+                    });
+                    lista.appendChild(li<?php echo esc_js($i); ?>);
+                <?php endforeach; ?>
+
+                btn.replaceWith(lista);
+            });
+        });
+
+        document.querySelectorAll('.boton-terminar').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                const postID = btn.dataset.postid;
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `action=desactivar_diseño_directo&post_id=${postID}`
+                }).then(res => res.json()).then(() => location.reload());
+            });
+        });
+    </script>
+<?php
+});
+
 add_action('template_redirect', function () {
     if (is_admin()) return;
 
@@ -138,16 +253,23 @@ add_action('template_redirect', function () {
     if (!is_singular()) return;
 
     $id = get_the_ID();
+    $activo = get_post_meta($id, 'ConstrucionActivado', true);
+    $diseño = get_post_meta($id, 'ConstrucionDiseno', true);
     $global = get_option('enconstruccion_mantenimiento_global', false);
 
-    // Mostrar página en construcción si está activado el mantenimiento global
-    if ($global) {
-        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
-        exit;
+    // Mostrar página en construcción si procede
+    if (($activo && is_array($diseño)) || $global) {
+        if (!$diseño && $global) {
+            $diseño = $global;
+        }
+
+        if (is_array($diseño)) {
+            include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
+            exit;
+        }
     }
 });
 
-// Cargar hojas de estilo y fuentes
 function ImplementarCss()
 {
     wp_enqueue_style(
