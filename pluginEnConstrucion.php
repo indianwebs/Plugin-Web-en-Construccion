@@ -134,6 +134,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
         'imagesBaseUrl' => plugin_dir_url(__FILE__) . 'marcos/' // Aquí añadimos la ruta de las imágenes
     ]);
 });
+
 add_action('wp_ajax_guardar_diseño', function () {
     $diseños = get_option('enconstruccion_disenos', []);
     $nuevo = [
@@ -180,12 +181,8 @@ add_action('wp_ajax_activar_diseño_directo', function () {
 
 add_action('wp_ajax_desactivar_diseño_directo', function () {
     $id = intval($_POST['post_id']);
-    
-    // Eliminar los metadatos de la página
     delete_post_meta($id, 'ConstrucionActivado');
     delete_post_meta($id, 'ConstrucionDiseno');
-
-    // Mostrar la respuesta
     wp_send_json_success();
 });
 
@@ -250,7 +247,9 @@ add_action('admin_footer-edit.php', function () {
 
 add_action('template_redirect', function () {
     if (is_admin()) return;
+
     if (current_user_can('edit_pages')) return;
+
     if (!is_singular()) return;
 
     $id = get_the_ID();
@@ -258,26 +257,25 @@ add_action('template_redirect', function () {
     $diseño = get_post_meta($id, 'ConstrucionDiseno', true);
     $global = get_option('enconstruccion_mantenimiento_global', false);
 
-    // Si la página tiene mantenimiento activado con un diseño válido
-    if ($activo && is_array($diseño)) {
-        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
-        exit;
-    }
+    // Mostrar página en construcción si procede
+    if (($activo && is_array($diseño)) || $global) {
+        if (!$diseño && $global) {
+            $diseño = $global;
+        }
 
-    // Si no está activado individualmente pero sí hay un global
-    if (!$activo && is_array($global)) {
-        include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
-        exit;
+        if (is_array($diseño)) {
+            include plugin_dir_path(__FILE__) . 'ContrucionReal.php';
+            exit;
+        }
     }
 });
-
 
 function ImplementarCss()
 {
     wp_enqueue_style(
         'mi-plugin-styles',
         plugin_dir_url(__FILE__) . 'assets/preview.css',
-        array(),
+        [],
         null,
         'all'
     );
@@ -291,7 +289,7 @@ function ImplementarFuente()
         wp_enqueue_style(
             'google-roboto-font',
             'https://fonts.googleapis.com/css2?family=Roboto&display=swap',
-            array(),
+            [],
             null
         );
     }
