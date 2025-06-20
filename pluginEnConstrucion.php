@@ -220,9 +220,7 @@ add_action('admin_footer-edit.php', function () {
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             },
-                            body: action = activar_diseño_directo & post_id = $ {
-                                postID
-                            } & index = <?php echo esc_js($i); ?>
+                            body: `action=activar_diseño_directo&post_id=${postID}&index=${index}`
                         }).then(res => res.json()).then(() => location.reload());
                     });
                     lista.appendChild(li<?php echo esc_js($i); ?>);
