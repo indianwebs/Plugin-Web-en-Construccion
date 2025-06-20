@@ -52,18 +52,7 @@ function MostrarPaginasGuardadas()
 
     if (isset($_POST['desactivar_global'])) {
         delete_option('enconstruccion_mantenimiento_global');
-        // Limpiar estado de las páginas activadas
-        $args = [
-            'post_type' => 'page',
-            'meta_key' => 'ConstrucionActivado',
-            'meta_value' => true
-        ];
-        $pages = get_posts($args);
-        foreach ($pages as $page) {
-            delete_post_meta($page->ID, 'ConstrucionActivado');
-            delete_post_meta($page->ID, 'ConstrucionDiseno');
-        }
-        echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado y estado de las páginas actualizado.</p></div>';
+        echo '<div class="notice notice-warning"><p>Mantenimiento global desactivado.</p></div>';
     }
 
     if (isset($_POST['BorrarPlantilla'])) {
@@ -145,7 +134,6 @@ add_action('admin_enqueue_scripts', function ($hook) {
         'imagesBaseUrl' => plugin_dir_url(__FILE__) . 'marcos/' // Aquí añadimos la ruta de las imágenes
     ]);
 });
-
 add_action('wp_ajax_guardar_diseño', function () {
     $diseños = get_option('enconstruccion_disenos', []);
     $nuevo = [
@@ -192,8 +180,12 @@ add_action('wp_ajax_activar_diseño_directo', function () {
 
 add_action('wp_ajax_desactivar_diseño_directo', function () {
     $id = intval($_POST['post_id']);
+    
+    // Eliminar los metadatos de la página
     delete_post_meta($id, 'ConstrucionActivado');
     delete_post_meta($id, 'ConstrucionDiseno');
+
+    // Mostrar la respuesta
     wp_send_json_success();
 });
 
@@ -286,7 +278,7 @@ function ImplementarCss()
     wp_enqueue_style(
         'mi-plugin-styles',
         plugin_dir_url(__FILE__) . 'assets/preview.css',
-        [],
+        array(),
         null,
         'all'
     );
@@ -300,7 +292,7 @@ function ImplementarFuente()
         wp_enqueue_style(
             'google-roboto-font',
             'https://fonts.googleapis.com/css2?family=Roboto&display=swap',
-            [],
+            array(),
             null
         );
     }
